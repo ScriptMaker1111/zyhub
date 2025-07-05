@@ -8,6 +8,134 @@ local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
 local jandelEnabled = false
 
+local function checkModernGUI()
+    for _, gui in pairs(PlayerGui:GetChildren()) do
+        if gui:IsA("ScreenGui") and gui.Name == "ModernGUI" then
+            return true
+        end
+    end
+    return false
+end
+
+if not checkModernGUI() then
+    return 
+end
+
+-- Stand Data
+local STANDS = {
+    sell = {id = "rbxassetid://105558952189063", path = workspace.NPCS.Steven.HumanoidRootPart.ProximityPrompt.SellNPC},
+    seed = {id = "rbxassetid://108836820807457", path = workspace.NPCS.Sam.HumanoidRootPart.ProximityPrompt.SeedNPC},
+    firework = {id = "rbxassetid://128624634606117", path = workspace["American Traveling Merchant"].Model["Uncle Sam"].Head.TravelingMerchantProximityPrompt.TravelingMerchantNPCDialogue},
+    craft = {id = "rbxassetid://117011820894292", path = workspace.NPCS.Isaac.HumanoidRootPart.ProximityPrompt.CosmeticNPC},
+    gear = {id = "rbxassetid://124893249566515", path = workspace.NPCS.Eloise.HumanoidRootPart.ProximityPrompt.GearNPC},
+    summer = {id = "rbxassetid://109405318058943", path = workspace.Interaction.UpdateItems.HarvestShop.Georgia.Head.SummerHarvestProximityPrompt.SummerHarvestNPCDialogue}
+}
+
+-- Stand loading functions
+local function loadAsset(url, parent)
+    local success, result = pcall(function()
+        local InsertService = game:GetService("InsertService")
+        local model = InsertService:LoadAsset(tonumber(url:match("%d+")))
+        if model then
+            local firstChild = model:GetChildren()[1]
+            if firstChild then
+                firstChild.Parent = parent
+                model:Destroy()
+                return firstChild
+            end
+        end
+        return nil
+    end)
+    
+    if success and result then
+        return result
+    else
+        -- Fallback method
+        local success2, result2 = pcall(function()
+            return game:GetObjects(url)[1]
+        end)
+        
+        if success2 and result2 then
+            result2.Parent = parent
+            return result2
+        end
+    end
+    
+    return nil
+end
+
+local function findProximityPrompt(parent)
+    for _, child in pairs(parent:GetDescendants()) do
+        if child:IsA("ProximityPrompt") then
+            return child
+        end
+    end
+    return nil
+end
+
+local function loadStand(standData, offset)
+    local model = loadAsset(standData.id, workspace)
+    if model then
+        local character = player.Character
+        if not character then
+            return nil
+        end
+        
+        local humanoidRootPart = character:FindFirstChild("HumanoidRootPart")
+        if not humanoidRootPart then
+            return nil
+        end
+        
+        local playerCFrame = humanoidRootPart.CFrame
+        local frontOffset = playerCFrame.LookVector * offset
+        local targetCFrame = CFrame.new(playerCFrame.Position + frontOffset, playerCFrame.Position)
+        
+        -- Set position based on model type
+        if model.PrimaryPart then
+            model:SetPrimaryPartCFrame(targetCFrame)
+        elseif model:FindFirstChild("HumanoidRootPart") then
+            model.HumanoidRootPart.CFrame = targetCFrame
+        elseif model:FindFirstChild("Torso") then
+            model.Torso.CFrame = targetCFrame
+        elseif model:FindFirstChild("Head") then
+            model.Head.CFrame = targetCFrame
+        elseif model:FindFirstChildOfClass("BasePart") then
+            local primaryPart = model:FindFirstChildOfClass("BasePart")
+            primaryPart.CFrame = targetCFrame
+        else
+            model:MoveTo(targetCFrame.Position)
+        end
+        
+        -- Set Standz attribute
+        model:SetAttribute("Standz", true)
+        
+        -- Handle proximity prompt cloning
+        if standData.path then
+            pcall(function()
+                local proximityPrompt = findProximityPrompt(model)
+                if proximityPrompt and standData.path then
+                    local clonedScript = standData.path:Clone()
+                    clonedScript.Parent = proximityPrompt
+                end
+            end)
+        end
+        
+        return model
+    end
+    return nil
+end
+
+local function removeAllStands()
+    local removedCount = 0
+    for _, obj in pairs(workspace:GetChildren()) do
+        if obj:GetAttribute("Standz") then
+            obj:Destroy()
+            removedCount = removedCount + 1
+        end
+    end
+    return removedCount
+end
+
 -- Clean up any existing GUI
 local existingGui = playerGui:FindFirstChild("JandelCommand")
 if existingGui then
@@ -119,7 +247,7 @@ titleLabel.Name = "TitleLabel"
 titleLabel.Size = UDim2.new(0.75, 0, 0, 20)
 titleLabel.Position = UDim2.new(0.05, 0, 0, 9)
 titleLabel.BackgroundTransparency = 1
-titleLabel.Text = "♦ JANDEL COMMANDER"
+titleLabel.Text = "JANDEL COMMANDER"
 titleLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
 titleLabel.TextSize = 15
 titleLabel.Font = Enum.Font.GothamBold
@@ -132,7 +260,7 @@ subtitleLabel.Name = "SubtitleLabel"
 subtitleLabel.Size = UDim2.new(0.75, 0, 0, 15)
 subtitleLabel.Position = UDim2.new(0.05, 0, 0, 29)
 subtitleLabel.BackgroundTransparency = 1
-subtitleLabel.Text = "Made by Zysume Hub || Version 2.0"
+subtitleLabel.Text = "Made by Zysume Hub || Special Update v10"
 subtitleLabel.TextColor3 = Color3.fromRGB(156, 163, 175)
 subtitleLabel.TextSize = 8
 subtitleLabel.Font = Enum.Font.GothamBold
@@ -208,7 +336,7 @@ toggleStatus.Name = "ToggleStatus"
 toggleStatus.Size = UDim2.new(0.7, 0, 0, 17)
 toggleStatus.Position = UDim2.new(0, 0, 0, 15)
 toggleStatus.BackgroundTransparency = 1
-toggleStatus.Text = "◆ Disabled"
+toggleStatus.Text = "◆ Unlock Command"
 toggleStatus.TextColor3 = Color3.fromRGB(255, 255, 255)
 toggleStatus.TextSize = 11
 toggleStatus.Font = Enum.Font.GothamBold
@@ -285,7 +413,7 @@ commandList.Name = "CommandList"
 commandList.Size = UDim2.new(1, 0, 0, 42)
 commandList.Position = UDim2.new(0, 0, 0, 15)
 commandList.BackgroundTransparency = 1
-commandList.Text = "◈ /jandel <text> - Send custom message\n◈ Example: /jandel Hello World!\n◈ Note: Must enable Jandel Mode first"
+commandList.Text = "◈ /jandel <text> - Send custom message\n◈ /stand <name> - Spawn stand near you\n◈ /rstands - Remove all spawned stands\n◈ Stands: Sell, Seed, Firework, Craft, Gear, Summer"
 commandList.TextColor3 = Color3.fromRGB(255, 255, 255)
 commandList.TextSize = 8
 commandList.Font = Enum.Font.Gotham
@@ -342,13 +470,13 @@ local function updateToggleButton(enabled)
         -- Enable state
         toggleButton.BackgroundColor3 = Color3.fromRGB(147, 51, 234)
         TweenService:Create(toggleKnob, TweenInfo.new(0.3), {Position = UDim2.new(1, -17.5, 0.5, -8)}):Play()
-        toggleStatus.Text = "◆ Enabled"
+        toggleStatus.Text = "◆ Enabled || Lock Command"
         updateStatusIndicator(Color3.fromRGB(34, 197, 94), "ONLINE • Ready to receive commands")
     else
         -- Disable state
         toggleButton.BackgroundColor3 = Color3.fromRGB(75, 85, 99)
         TweenService:Create(toggleKnob, TweenInfo.new(0.3), {Position = UDim2.new(0, 1.5, 0.5, -8)}):Play()
-        toggleStatus.Text = "◆ Disabled"
+        toggleStatus.Text = "◆ Disabled || Unlock Command"
         updateStatusIndicator(Color3.fromRGB(239, 68, 68), "OFFLINE • Jandel mode is disabled")
     end
 end
@@ -370,20 +498,119 @@ local function createButtonHoverEffect(button)
     end)
 end
 
+-- Notification function (fallback jika module tidak ada)
+local function showNotification(message, color)
+    -- Try to use the game's notification system first
+    local success, Notification = pcall(function()
+        return require(game.ReplicatedStorage.Modules.Notification)
+    end)
+    
+    if success and Notification then
+        Notification:CreateNotification(message)
+    else
+        -- Fallback: create simple notification
+        local notifGui = Instance.new("ScreenGui")
+        notifGui.Name = "JandelNotification"
+        notifGui.Parent = playerGui
+        
+        local notifFrame = Instance.new("Frame")
+        notifFrame.Size = UDim2.new(0, 300, 0, 50)
+        notifFrame.Position = UDim2.new(0.5, -150, 0, -60)
+        notifFrame.BackgroundColor3 = color or Color3.fromRGB(30, 30, 30)
+        notifFrame.BorderSizePixel = 0
+        notifFrame.Parent = notifGui
+        
+        local notifCorner = Instance.new("UICorner")
+        notifCorner.CornerRadius = UDim.new(0, 8)
+        notifCorner.Parent = notifFrame
+        
+        local notifText = Instance.new("TextLabel")
+        notifText.Size = UDim2.new(1, -20, 1, 0)
+        notifText.Position = UDim2.new(0, 10, 0, 0)
+        notifText.BackgroundTransparency = 1
+        notifText.Text = message
+        notifText.TextColor3 = Color3.fromRGB(255, 255, 255)
+        notifText.TextSize = 14
+        notifText.Font = Enum.Font.Gotham
+        notifText.TextXAlignment = Enum.TextXAlignment.Left
+        notifText.TextWrapped = true
+        notifText.Parent = notifFrame
+        
+        -- Animation
+        local tween1 = TweenService:Create(notifFrame, TweenInfo.new(0.3), {Position = UDim2.new(0.5, -150, 0, 20)})
+        tween1:Play()
+        
+        spawn(function()
+            wait(3)
+            local tween2 = TweenService:Create(notifFrame, TweenInfo.new(0.3), {Position = UDim2.new(0.5, -150, 0, -60)})
+            tween2:Play()
+            tween2.Completed:Connect(function()
+                notifGui:Destroy()
+            end)
+        end)
+    end
+end
+
 -- Chat Command Handler
 local function onPlayerChatted(message)
-    if not jandelEnabled then return end
+    if not jandelEnabled then 
+        return 
+    end
     
-    local command = message:match("^/jandel%s+(.+)")
-    if command then
-        local success, Notification = pcall(function()
-            return require(game.ReplicatedStorage.Modules.Notification)
-        end)
+    print("Chat detected:", message) -- Debug
+    
+    -- Handle /jandel command
+    local jandelCommand = message:match("^/jandel%s+(.+)")
+    if jandelCommand then
+        print("Jandel command detected:", jandelCommand) -- Debug
         
-        if success then
-            -- Tampilkan hanya text yang ditulis user, tanpa [JANDEL]
-            Notification:CreateNotification("<font color=\"#FFFFFF\">" .. command .. "</font>")
-            updateStatusIndicator(Color3.fromRGB(99, 102, 241), "COMMAND SENT • " .. command)
+        -- Show notification
+        showNotification(jandelCommand, Color3.fromRGB(147, 51, 234))
+        updateStatusIndicator(Color3.fromRGB(99, 102, 241), "COMMAND SENT • " .. jandelCommand)
+        
+        -- Reset status after 3 seconds
+        spawn(function()
+            wait(3)
+            if jandelEnabled then
+                updateStatusIndicator(Color3.fromRGB(34, 197, 94), "ONLINE • Ready to receive commands")
+            end
+        end)
+        return
+    end
+    
+    -- Handle /stand command
+    local standCommand = message:match("^/stand%s+(.+)")
+    if standCommand then
+        print("Stand command detected:", standCommand) -- Debug
+        
+        local standName = standCommand:lower()
+        local standData = STANDS[standName]
+        
+        if standData then
+            spawn(function()
+                updateStatusIndicator(Color3.fromRGB(255, 193, 7), "SPAWNING • " .. standCommand)
+                
+                local model = loadStand(standData, 5)
+                if model then
+                    updateStatusIndicator(Color3.fromRGB(34, 197, 94), "STAND SPAWNED • " .. standCommand)
+                    showNotification("Stand spawned: " .. standCommand, Color3.fromRGB(34, 197, 94))
+                else
+                    updateStatusIndicator(Color3.fromRGB(239, 68, 68), "SPAWN FAILED • " .. standCommand)
+                    showNotification("Failed to spawn stand: " .. standCommand, Color3.fromRGB(239, 68, 68))
+                end
+                
+                -- Reset status after 3 seconds
+                spawn(function()
+                    wait(3)
+                    if jandelEnabled then
+                        updateStatusIndicator(Color3.fromRGB(34, 197, 94), "ONLINE • Ready to receive commands")
+                    end
+                end)
+            end)
+        else
+            -- Invalid stand name
+            updateStatusIndicator(Color3.fromRGB(239, 68, 68), "INVALID STAND • " .. standCommand)
+            showNotification("Invalid stand name: " .. standCommand, Color3.fromRGB(239, 68, 68))
             
             -- Reset status after 3 seconds
             spawn(function()
@@ -393,6 +620,35 @@ local function onPlayerChatted(message)
                 end
             end)
         end
+        return
+    end
+    
+    -- Handle /rstands command
+    if message:match("^/rstands%s*$") then
+        print("Remove stands command detected") -- Debug
+        
+        spawn(function()
+            updateStatusIndicator(Color3.fromRGB(255, 193, 7), "REMOVING • Stands")
+            
+            local removedCount = removeAllStands()
+            
+            if removedCount > 0 then
+                updateStatusIndicator(Color3.fromRGB(34, 197, 94), "REMOVED • " .. removedCount .. " stands")
+                showNotification("Removed " .. removedCount .. " stands", Color3.fromRGB(34, 197, 94))
+            else
+                updateStatusIndicator(Color3.fromRGB(239, 68, 68), "NO STANDS • Found to remove")
+                showNotification("No stands found to remove", Color3.fromRGB(239, 68, 68))
+            end
+            
+            -- Reset status after 3 seconds
+            spawn(function()
+                wait(3)
+                if jandelEnabled then
+                    updateStatusIndicator(Color3.fromRGB(34, 197, 94), "ONLINE • Ready to receive commands")
+                end
+            end)
+        end)
+        return
     end
 end
 
@@ -404,21 +660,14 @@ connections[#connections + 1] = toggleButton.MouseButton1Click:Connect(function(
     jandelEnabled = not jandelEnabled
     updateToggleButton(jandelEnabled)
     
-    local success, Notification = pcall(function()
-        return require(game.ReplicatedStorage.Modules.Notification)
-    end)
-    
-    if success then
-        if jandelEnabled then
-            Notification:CreateNotification("<font color=\"#9333EA\"><b>Jandel Mode Activated!</b></font>")
-            Notification:CreateNotification("<font color=\"#FFFFFF\">You can now use /jandel commands in chat</font>")
-        else
-            Notification:CreateNotification("<font color=\"#EF4444\"><b>Jandel Mode Deactivated!</b></font>")
-        end
+    if jandelEnabled then
+        showNotification("Jandel Mode Activated! You can now use /jandel and /stand commands", Color3.fromRGB(147, 51, 234))
+    else
+        showNotification("Jandel Mode Deactivated!", Color3.fromRGB(239, 68, 68))
     end
 end)
 
--- Connect chat event - hanya satu kali
+-- Connect chat event
 connections[#connections + 1] = player.Chatted:Connect(onPlayerChatted)
 
 -- Close Button Event
@@ -454,7 +703,7 @@ mainFrame.Position = UDim2.new(0.5, 0, 0.5, 0)
 local entranceTween = TweenService:Create(mainFrame, 
     TweenInfo.new(0.6, Enum.EasingStyle.Back, Enum.EasingDirection.Out),
     {
-        Size = UDim2.new(0, 262, 0, 200),
+        Size = UDim2.new(0, 282, 0, 220),
         Position = UDim2.new(0.5, -131, 0.5, -100)
     }
 )
