@@ -8,19 +8,6 @@ local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
 local jandelEnabled = false
 
-local function checkModernGUI()
-    for _, gui in pairs(PlayerGui:GetChildren()) do
-        if gui:IsA("ScreenGui") and gui.Name == "ModernGUI" then
-            return true
-        end
-    end
-    return false
-end
-
-if not checkModernGUI() then
-    return 
-end
-
 -- Stand Data
 local STANDS = {
     sell = {id = "rbxassetid://105558952189063", path = workspace.NPCS.Steven.HumanoidRootPart.ProximityPrompt.SellNPC},
@@ -28,7 +15,7 @@ local STANDS = {
     firework = {id = "rbxassetid://128624634606117", path = workspace["American Traveling Merchant"].Model["Uncle Sam"].Head.TravelingMerchantProximityPrompt.TravelingMerchantNPCDialogue},
     craft = {id = "rbxassetid://117011820894292", path = workspace.NPCS.Isaac.HumanoidRootPart.ProximityPrompt.CosmeticNPC},
     gear = {id = "rbxassetid://124893249566515", path = workspace.NPCS.Eloise.HumanoidRootPart.ProximityPrompt.GearNPC},
-    summer = {id = "rbxassetid://109405318058943", path = workspace.Interaction.UpdateItems.HarvestShop.Georgia.Head.SummerHarvestProximityPrompt.SummerHarvestNPCDialogue}
+    summer = {id = "rbxassetid://109405318058943", path = workspace.SummerHarvestEvent.HarvestShop.Georgia.Head.SummerHarvestProximityPrompt.SummerHarvestNPCDialogue}
 }
 
 -- Stand loading functions
