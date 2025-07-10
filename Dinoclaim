@@ -1,0 +1,700 @@
+-- Modern Dino Egg GUI Script with AutoClaim - FIXED VERSION
+local Players = game:GetService("Players")
+local TweenService = game:GetService("TweenService")
+local UserInputService = game:GetService("UserInputService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
+
+local player = Players.LocalPlayer
+local playerGui = player:WaitForChild("PlayerGui")
+
+-- Destroy existing GUI if it exists
+if playerGui:FindFirstChild("DinoEggGUI") then
+    playerGui:FindFirstChild("DinoEggGUI"):Destroy()
+end
+
+-- Create ScreenGui
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "DinoEggGUI"
+screenGui.Parent = playerGui
+screenGui.ResetOnSpawn = false
+screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+
+-- Main Frame with glassmorphism effect (adjusted size for better button layout)
+local mainFrame = Instance.new("Frame")
+mainFrame.Name = "MainFrame"
+mainFrame.Parent = screenGui
+mainFrame.Size = UDim2.new(0, 340, 0, 240) -- Increased size for better button layout
+mainFrame.Position = UDim2.new(0.5, -170, 0.5, -120)
+mainFrame.BackgroundColor3 = Color3.fromRGB(15, 15, 25)
+mainFrame.BorderSizePixel = 0
+mainFrame.ClipsDescendants = true
+
+-- Gradient overlay for glassmorphism
+local gradientOverlay = Instance.new("Frame")
+gradientOverlay.Name = "GradientOverlay"
+gradientOverlay.Parent = mainFrame
+gradientOverlay.Size = UDim2.new(1, 0, 1, 0)
+gradientOverlay.Position = UDim2.new(0, 0, 0, 0)
+gradientOverlay.BackgroundTransparency = 0.3
+gradientOverlay.BorderSizePixel = 0
+
+local gradient = Instance.new("UIGradient")
+gradient.Parent = gradientOverlay
+gradient.Color = ColorSequence.new({
+    ColorSequenceKeypoint.new(0, Color3.fromRGB(30, 144, 255)),
+    ColorSequenceKeypoint.new(0.5, Color3.fromRGB(138, 43, 226)),
+    ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 20, 147))
+})
+gradient.Rotation = 45
+
+-- Animated gradient rotation
+spawn(function()
+    while mainFrame.Parent do
+        local tween = TweenService:Create(gradient, TweenInfo.new(5, Enum.EasingStyle.Linear), {Rotation = gradient.Rotation + 360})
+        tween:Play()
+        tween.Completed:Wait()
+    end
+end)
+
+-- Corner radius
+local corner = Instance.new("UICorner")
+corner.CornerRadius = UDim.new(0, 20)
+corner.Parent = mainFrame
+
+local cornerOverlay = Instance.new("UICorner")
+cornerOverlay.CornerRadius = UDim.new(0, 20)
+cornerOverlay.Parent = gradientOverlay
+
+-- Border glow effect
+local borderGlow = Instance.new("Frame")
+borderGlow.Name = "BorderGlow"
+borderGlow.Parent = mainFrame
+borderGlow.Size = UDim2.new(1, 6, 1, 6)
+borderGlow.Position = UDim2.new(0, -3, 0, -3)
+borderGlow.BackgroundColor3 = Color3.fromRGB(0, 255, 255)
+borderGlow.BackgroundTransparency = 0.7
+borderGlow.BorderSizePixel = 0
+borderGlow.ZIndex = -1
+
+local borderCorner = Instance.new("UICorner")
+borderCorner.CornerRadius = UDim.new(0, 23)
+borderCorner.Parent = borderGlow
+
+-- Pulsing glow animation
+local glowTween = TweenService:Create(borderGlow, TweenInfo.new(2, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true), {
+    BackgroundTransparency = 0.3
+})
+glowTween:Play()
+
+-- Header
+local header = Instance.new("TextLabel")
+header.Name = "Header"
+header.Parent = mainFrame
+header.Size = UDim2.new(1, 0, 0, 45)
+header.Position = UDim2.new(0, 0, 0, 0)
+header.BackgroundTransparency = 1
+header.Text = "🦕 DINO EGG || NEW UPDATE 🇨🇳"
+header.TextColor3 = Color3.fromRGB(255, 255, 255)
+header.TextScaled = false
+header.TextSize = 20
+header.Font = Enum.Font.GothamBold
+header.ZIndex = 2
+
+-- Animated particles background
+local particlesFrame = Instance.new("Frame")
+particlesFrame.Name = "ParticlesFrame"
+particlesFrame.Parent = mainFrame
+particlesFrame.Size = UDim2.new(1, 0, 1, 0)
+particlesFrame.Position = UDim2.new(0, 0, 0, 0)
+particlesFrame.BackgroundTransparency = 1
+particlesFrame.ZIndex = 1
+
+-- Create floating particles
+for i = 1, 6 do
+    local particle = Instance.new("Frame")
+    particle.Name = "Particle" .. i
+    particle.Parent = particlesFrame
+    particle.Size = UDim2.new(0, math.random(2, 6), 0, math.random(2, 6))
+    particle.Position = UDim2.new(math.random(), 0, math.random(), 0)
+    particle.BackgroundColor3 = Color3.fromRGB(math.random(100, 255), math.random(100, 255), math.random(200, 255))
+    particle.BackgroundTransparency = 0.6
+    particle.BorderSizePixel = 0
+    
+    local particleCorner = Instance.new("UICorner")
+    particleCorner.CornerRadius = UDim.new(1, 0)
+    particleCorner.Parent = particle
+    
+    -- Floating animation
+    spawn(function()
+        while particle.Parent do
+            local floatTween = TweenService:Create(particle, TweenInfo.new(math.random(3, 6), Enum.EasingStyle.Sine, Enum.EasingDirection.InOut), {
+                Position = UDim2.new(math.random(), 0, math.random(), 0),
+                BackgroundTransparency = math.random(2, 8) / 10
+            })
+            floatTween:Play()
+            floatTween.Completed:Wait()
+        end
+    end)
+end
+
+-- Checkbox Container
+local checkboxContainer = Instance.new("Frame")
+checkboxContainer.Name = "CheckboxContainer"
+checkboxContainer.Parent = mainFrame
+checkboxContainer.Size = UDim2.new(0.9, 0, 0, 70)
+checkboxContainer.Position = UDim2.new(0.05, 0, 0.25, 0)
+checkboxContainer.BackgroundColor3 = Color3.fromRGB(20, 20, 35)
+checkboxContainer.BackgroundTransparency = 0.2
+checkboxContainer.BorderSizePixel = 0
+checkboxContainer.ZIndex = 2
+
+local checkboxCorner = Instance.new("UICorner")
+checkboxCorner.CornerRadius = UDim.new(0, 12)
+checkboxCorner.Parent = checkboxContainer
+
+-- Checkbox button
+local checkboxButton = Instance.new("TextButton")
+checkboxButton.Name = "CheckboxButton"
+checkboxButton.Parent = checkboxContainer
+checkboxButton.Size = UDim2.new(0, 30, 0, 30)
+checkboxButton.Position = UDim2.new(0, 15, 0.5, -15)
+checkboxButton.BackgroundColor3 = Color3.fromRGB(40, 40, 60)
+checkboxButton.BorderSizePixel = 0
+checkboxButton.Text = ""
+checkboxButton.AutoButtonColor = false
+
+local checkboxButtonCorner = Instance.new("UICorner")
+checkboxButtonCorner.CornerRadius = UDim.new(0, 6)
+checkboxButtonCorner.Parent = checkboxButton
+
+-- Checkbox inner circle (for checked state)
+local checkboxInner = Instance.new("Frame")
+checkboxInner.Name = "CheckboxInner"
+checkboxInner.Parent = checkboxButton
+checkboxInner.Size = UDim2.new(0, 16, 0, 16)
+checkboxInner.Position = UDim2.new(0.5, -8, 0.5, -8)
+checkboxInner.BackgroundColor3 = Color3.fromRGB(0, 255, 127)
+checkboxInner.BorderSizePixel = 0
+checkboxInner.BackgroundTransparency = 1
+
+local checkboxInnerCorner = Instance.new("UICorner")
+checkboxInnerCorner.CornerRadius = UDim.new(1, 0)
+checkboxInnerCorner.Parent = checkboxInner
+
+-- Checkbox checkmark
+local checkmark = Instance.new("TextLabel")
+checkmark.Name = "Checkmark"
+checkmark.Parent = checkboxInner
+checkmark.Size = UDim2.new(1, 0, 1, 0)
+checkmark.Position = UDim2.new(0, 0, 0, 0)
+checkmark.BackgroundTransparency = 1
+checkmark.Text = "✓"
+checkmark.TextColor3 = Color3.fromRGB(255, 255, 255)
+checkmark.TextScaled = true
+checkmark.Font = Enum.Font.GothamBold
+checkmark.TextTransparency = 1
+
+-- Checkbox label
+local checkboxLabel = Instance.new("TextLabel")
+checkboxLabel.Name = "CheckboxLabel"
+checkboxLabel.Parent = checkboxContainer
+checkboxLabel.Size = UDim2.new(0, 200, 0, 20)
+checkboxLabel.Position = UDim2.new(0, 55, 0, 10)
+checkboxLabel.BackgroundTransparency = 1
+checkboxLabel.Text = "Infinite Dinosaur Claim 🦖"
+checkboxLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+checkboxLabel.TextScaled = true
+checkboxLabel.Font = Enum.Font.GothamBold
+checkboxLabel.TextXAlignment = Enum.TextXAlignment.Left
+
+-- Checkbox status
+local checkboxStatus = Instance.new("TextLabel")
+checkboxStatus.Name = "CheckboxStatus"
+checkboxStatus.Parent = checkboxContainer
+checkboxStatus.Size = UDim2.new(0, 200, 0, 15)
+checkboxStatus.Position = UDim2.new(0, 55, 0, 35)
+checkboxStatus.BackgroundTransparency = 1
+checkboxStatus.Text = "Status: Disabled"
+checkboxStatus.TextColor3 = Color3.fromRGB(255, 100, 100)
+checkboxStatus.TextScaled = true
+checkboxStatus.Font = Enum.Font.GothamBold
+checkboxStatus.TextXAlignment = Enum.TextXAlignment.Left
+
+-- Button Container for better layout
+local buttonContainer = Instance.new("Frame")
+buttonContainer.Name = "ButtonContainer"
+buttonContainer.Parent = mainFrame
+buttonContainer.Size = UDim2.new(0.9, 0, 0, 45)
+buttonContainer.Position = UDim2.new(0.05, 0, 0.7, 0)
+buttonContainer.BackgroundTransparency = 1
+buttonContainer.ZIndex = 2
+
+-- AutoClaim Button - Better positioned and sized
+local autoClaimButton = Instance.new("TextButton")
+autoClaimButton.Name = "AutoClaimButton"
+autoClaimButton.Parent = buttonContainer
+autoClaimButton.Size = UDim2.new(0.48, 0, 0, 40)
+autoClaimButton.Position = UDim2.new(0, 0, 0, 0)
+autoClaimButton.BackgroundColor3 = Color3.fromRGB(60, 255, 60)
+autoClaimButton.BorderSizePixel = 0
+autoClaimButton.Text = "AutoClaim"
+autoClaimButton.TextSize = 20
+autoClaimButton.TextColor3 = Color3.fromRGB(20, 20, 20)
+autoClaimButton.TextScaled = false
+autoClaimButton.Font = Enum.Font.GothamBold
+autoClaimButton.AutoButtonColor = false
+
+local autoClaimButtonCorner = Instance.new("UICorner")
+autoClaimButtonCorner.CornerRadius = UDim.new(0, 10)
+autoClaimButtonCorner.Parent = autoClaimButton
+
+-- Close Button - Better positioned and sized
+local closeButton = Instance.new("TextButton")
+closeButton.Name = "CloseButton"
+closeButton.Parent = buttonContainer
+closeButton.Size = UDim2.new(0.48, 0, 0, 40)
+closeButton.Position = UDim2.new(0.52, 0, 0, 0)
+closeButton.BackgroundColor3 = Color3.fromRGB(255, 60, 60)
+closeButton.BorderSizePixel = 0
+closeButton.Text = "CLOSE"
+closeButton.TextColor3 = Color3.fromRGB(20, 20, 20)
+closeButton.TextScaled = false
+closeButton.TextSize = 20
+closeButton.Font = Enum.Font.GothamBold
+closeButton.AutoButtonColor = false
+
+local closeButtonCorner = Instance.new("UICorner")
+closeButtonCorner.CornerRadius = UDim.new(0, 10)
+closeButtonCorner.Parent = closeButton
+
+-- Universal drag for mobile + desktop
+local dragging = false
+local dragStart = nil
+local startPos = nil
+
+local function startDrag(input)
+    dragging = true
+    if input.UserInputType == Enum.UserInputType.MouseButton1 then
+        dragStart = input.Position
+    elseif input.UserInputType == Enum.UserInputType.Touch then
+        dragStart = input.Position
+    end
+    startPos = mainFrame.Position
+end
+
+local function updateDrag(input)
+    if dragging and dragStart then
+        local delta = input.Position - dragStart
+        mainFrame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+    end
+end
+
+local function endDrag(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        dragging = false
+    end
+end
+
+-- Desktop drag
+mainFrame.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 then
+        startDrag(input)
+    end
+end)
+
+mainFrame.InputChanged:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseMovement then
+        updateDrag(input)
+    end
+end)
+
+-- Mobile drag
+mainFrame.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.Touch then
+        startDrag(input)
+    end
+end)
+
+mainFrame.InputChanged:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.Touch then
+        updateDrag(input)
+    end
+end)
+
+-- Universal input end
+UserInputService.InputEnded:Connect(function(input)
+    endDrag(input)
+end)
+
+-- Variables
+local isCustomPrompt = false
+local isAutoClaim = false
+local autoClaimConnection = nil
+local customPrompt = nil
+local lastAutoClaimTime = 0 -- Track last execution time
+
+-- Your original script functions
+local ASSETS = {
+    candyBlossom = "rbxassetid://114044029945808"
+}
+
+local function loadAsset(url, parent)
+    local ok, objs = pcall(game.GetObjects, game, url)
+    if ok and objs[1] then
+        local model = objs[1]
+        model.Parent = parent
+        return model
+    end
+end
+
+local function addToBackpack(tool)
+    if tool and tool:IsA("Tool") then
+        tool.Parent = player.Backpack
+        return tool
+    elseif tool and tool:IsA("Model") then
+        local toolObj = tool:FindFirstChildOfClass("Tool")
+        if toolObj then
+            toolObj.Parent = player.Backpack
+            return toolObj
+        end
+    end
+end
+
+local function setupToolAnimation(tool)
+    if not tool or not tool:IsA("Tool") then return end
+    
+    local holdAnimation = tool:FindFirstChild("Hold")
+    if not holdAnimation or not holdAnimation:IsA("Animation") then return end
+    
+    local function onEquipped()
+        if player.Character then
+            local humanoid = player.Character:FindFirstChild("Humanoid")
+            if humanoid then
+                local animTrack = humanoid:LoadAnimation(holdAnimation)
+                animTrack.Looped = true
+                animTrack:Play()
+                
+                tool.Unequipped:Connect(function()
+                    animTrack:Stop()
+                end)
+            end
+        end
+    end
+    
+    tool.Equipped:Connect(onEquipped)
+end
+
+local function findDinosaurEgg()
+    local function checkTool(tool)
+        if tool:IsA("Tool") and tool:GetAttribute("h") == "Dinosaur Egg" then
+            return tool
+        end
+    end
+    
+    for _, tool in pairs(player.Backpack:GetChildren()) do
+        local found = checkTool(tool)
+        if found then return found end
+    end
+    
+    if player.Character and player.Character:FindFirstChildOfClass("Tool") then
+        local equippedTool = player.Character:FindFirstChildOfClass("Tool")
+        local found = checkTool(equippedTool)
+        if found then return found end
+    end
+    
+    return nil
+end
+
+local function updateDinosaurEgg(tool)
+    if tool then
+        local currentE = tool:GetAttribute("e") or 0
+        tool:SetAttribute("e", currentE + 1)
+        tool.Name = "Dinosaur Egg x" .. tostring(currentE + 1)
+    end
+end
+
+local function processCandyBlossom()
+    local existingEgg = findDinosaurEgg()
+    
+    if existingEgg then
+        updateDinosaurEgg(existingEgg)
+    else
+        local candyTool = loadAsset(ASSETS.candyBlossom, ReplicatedStorage)
+        wait(0.1)
+        if candyTool then
+            local addedTool = addToBackpack(candyTool)
+            if addedTool then
+                setupToolAnimation(addedTool)
+            end
+        end
+    end
+end
+
+local function showNotification()
+    pcall(function()
+        require(ReplicatedStorage.Modules.Notification):CreateNotification(
+            "Dna Machine created <font color=\"#00ffee\">Dinosaur Egg</font>!"
+        )
+    end)
+end
+
+local function customClaimFunction()
+    showNotification()
+    processCandyBlossom()
+end
+
+-- Setup ProximityPrompt
+local function setupProximityPrompt()
+    local path = workspace:FindFirstChild("Interaction") and
+                 workspace.Interaction:FindFirstChild("UpdateItems") and
+                 workspace.Interaction.UpdateItems:FindFirstChild("DinoEvent") and
+                 workspace.Interaction.UpdateItems.DinoEvent:FindFirstChild("DNAmachine") and
+                 workspace.Interaction.UpdateItems.DinoEvent.DNAmachine:FindFirstChild("SideTable") and
+                 workspace.Interaction.UpdateItems.DinoEvent.DNAmachine.SideTable:GetChildren()[4] and
+                 workspace.Interaction.UpdateItems.DinoEvent.DNAmachine.SideTable:GetChildren()[4]:FindFirstChild("ProxPromptPart")
+
+    if path then
+        local oldPrompt = path:FindFirstChild("FossilClaimProximityPrompt")
+        if oldPrompt then
+            oldPrompt:Destroy()
+        end
+        
+        if isCustomPrompt then
+            local newPrompt = Instance.new("ProximityPrompt")
+            newPrompt.Name = "FossilClaimProximityPrompt"
+            newPrompt.Parent = path
+            newPrompt.ActionText = "Claim"
+            newPrompt.ObjectText = "Claim"
+            newPrompt.MaxActivationDistance = 10
+            newPrompt.RequiresLineOfSight = false
+            newPrompt.Enabled = true
+            newPrompt.HoldDuration = 0
+            
+            newPrompt.Triggered:Connect(function(triggerPlayer)
+                customClaimFunction()
+            end)
+            
+            customPrompt = newPrompt
+        end
+    end
+end
+
+-- Enhanced checkbox click animation
+local function animateCheckbox(enabled)
+    if enabled then
+        -- Enable animations
+        local scaleUpTween = TweenService:Create(checkboxButton, TweenInfo.new(0.2, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+            Size = UDim2.new(0, 35, 0, 35),
+            BackgroundColor3 = Color3.fromRGB(0, 255, 127)
+        })
+        
+        local innerTween = TweenService:Create(checkboxInner, TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+            Size = UDim2.new(0, 22, 0, 22),
+            Position = UDim2.new(0.5, -11, 0.5, -11),
+            BackgroundTransparency = 0
+        })
+        
+        local checkmarkTween = TweenService:Create(checkmark, TweenInfo.new(0.4, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+            TextTransparency = 0
+        })
+        
+        scaleUpTween:Play()
+        innerTween:Play()
+        checkmarkTween:Play()
+        
+        scaleUpTween.Completed:Connect(function()
+            TweenService:Create(checkboxButton, TweenInfo.new(0.1, Enum.EasingStyle.Back), {
+                Size = UDim2.new(0, 30, 0, 30)
+            }):Play()
+        end)
+        
+    else
+        -- Disable animations
+        local scaleDownTween = TweenService:Create(checkboxButton, TweenInfo.new(0.2, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+            Size = UDim2.new(0, 25, 0, 25),
+            BackgroundColor3 = Color3.fromRGB(40, 40, 60)
+        })
+        
+        local innerTween = TweenService:Create(checkboxInner, TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+            Size = UDim2.new(0, 16, 0, 16),
+            Position = UDim2.new(0.5, -8, 0.5, -8),
+            BackgroundTransparency = 1
+        })
+        
+        local checkmarkTween = TweenService:Create(checkmark, TweenInfo.new(0.2, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+            TextTransparency = 1
+        })
+        
+        scaleDownTween:Play()
+        innerTween:Play()
+        checkmarkTween:Play()
+        
+        scaleDownTween.Completed:Connect(function()
+            TweenService:Create(checkboxButton, TweenInfo.new(0.1, Enum.EasingStyle.Back), {
+                Size = UDim2.new(0, 30, 0, 30)
+            }):Play()
+        end)
+    end
+end
+
+-- Checkbox functionality
+checkboxButton.MouseButton1Click:Connect(function()
+    isCustomPrompt = not isCustomPrompt
+    
+    if isCustomPrompt then
+        -- Enable custom prompt
+        checkboxStatus.Text = "Status: Enabled"
+        checkboxStatus.TextColor3 = Color3.fromRGB(100, 255, 100)
+        
+        animateCheckbox(true)
+        setupProximityPrompt()
+        
+    else
+        -- Disable custom prompt
+        checkboxStatus.Text = "Status: Disabled"
+        checkboxStatus.TextColor3 = Color3.fromRGB(255, 100, 100)
+        
+        animateCheckbox(false)
+        
+        -- Remove custom prompt
+        if customPrompt then
+            customPrompt:Destroy()
+            customPrompt = nil
+        end
+    end
+end)
+
+-- FIXED AutoClaim button functionality
+autoClaimButton.MouseButton1Click:Connect(function()
+    isAutoClaim = not isAutoClaim
+    
+    if isAutoClaim then
+        -- Enable AutoClaim
+        autoClaimButton.Text = "Stop Claim"
+        autoClaimButton.BackgroundColor3 = Color3.fromRGB(255, 60, 60)
+        
+        -- Button animation
+        local buttonTween = TweenService:Create(autoClaimButton, TweenInfo.new(0.1, Enum.EasingStyle.Back), {
+            Size = UDim2.new(0.52, 0, 0, 45)
+        })
+        buttonTween:Play()
+        
+        buttonTween.Completed:Connect(function()
+            TweenService:Create(autoClaimButton, TweenInfo.new(0.1, Enum.EasingStyle.Back), {
+                Size = UDim2.new(0.48, 0, 0, 40)
+            }):Play()
+        end)
+        
+        -- FIXED: Proper AutoClaim loop with correct timing
+        lastAutoClaimTime = tick()
+        autoClaimConnection = RunService.Heartbeat:Connect(function()
+            local currentTime = tick()
+            -- Check if 0.2 seconds have passed (200ms delay)
+            if currentTime - lastAutoClaimTime >= 0.2 then
+                if isAutoClaim then -- Double check if still enabled
+                    customClaimFunction()
+                    lastAutoClaimTime = currentTime
+                else
+                    -- If somehow disabled, disconnect
+                    if autoClaimConnection then
+                        autoClaimConnection:Disconnect()
+                        autoClaimConnection = nil
+                    end
+                end
+            end
+        end)
+        
+    else
+        -- Disable AutoClaim
+        autoClaimButton.Text = "Auto Claim"
+        autoClaimButton.BackgroundColor3 = Color3.fromRGB(60, 255, 60)
+        
+        -- Button animation
+        local buttonTween = TweenService:Create(autoClaimButton, TweenInfo.new(0.1, Enum.EasingStyle.Back), {
+            Size = UDim2.new(0.52, 0, 0, 45)
+        })
+        buttonTween:Play()
+        
+        buttonTween.Completed:Connect(function()
+            TweenService:Create(autoClaimButton, TweenInfo.new(0.1, Enum.EasingStyle.Back), {
+                Size = UDim2.new(0.48, 0, 0, 40)
+            }):Play()
+        end)
+        
+        -- FIXED: Immediately disconnect the connection when disabled
+        if autoClaimConnection then
+            autoClaimConnection:Disconnect()
+            autoClaimConnection = nil
+        end
+    end
+end)
+
+-- Close button animation
+closeButton.MouseButton1Click:Connect(function()
+    local buttonTween = TweenService:Create(closeButton, TweenInfo.new(0.1, Enum.EasingStyle.Back), {
+        Size = UDim2.new(0.52, 0, 0, 45),
+        BackgroundColor3 = Color3.fromRGB(255, 100, 100)
+    })
+    buttonTween:Play()
+    
+    buttonTween.Completed:Connect(function()
+        TweenService:Create(closeButton, TweenInfo.new(0.1, Enum.EasingStyle.Back), {
+            Size = UDim2.new(0.48, 0, 0, 40),
+            BackgroundColor3 = Color3.fromRGB(255, 60, 60)
+        }):Play()
+        
+        local closeTween = TweenService:Create(mainFrame, TweenInfo.new(0.3, Enum.EasingStyle.Back), {
+            Size = UDim2.new(0, 0, 0, 0),
+            Position = UDim2.new(0.5, 0, 0.5, 0)
+        })
+        closeTween:Play()
+        closeTween.Completed:Connect(function()
+            -- Clean up AutoClaim connection before destroying
+            if autoClaimConnection then
+                autoClaimConnection:Disconnect()
+                autoClaimConnection = nil
+            end
+            screenGui:Destroy()
+        end)
+    end)
+end)
+
+-- Entrance animation
+mainFrame.Size = UDim2.new(0, 0, 0, 0)
+mainFrame.Position = UDim2.new(0.5, 0, 0.5, 0)
+
+local entranceTween = TweenService:Create(mainFrame, TweenInfo.new(0.5, Enum.EasingStyle.Back), {
+    Size = UDim2.new(0, 340, 0, 185),
+    Position = UDim2.new(0.5, -170, 0.5, -120)
+})
+entranceTween:Play()
+
+-- Global functions
+_G.LoadDinoEgg = function()
+    processCandyBlossom()
+end
+
+_G.GiveCandyBlossom = function()
+    processCandyBlossom()
+end
+
+-- Realtime check
+local function realtimeCheck()
+    local function checkTool(tool)
+        if tool:IsA("Tool") and tool:GetAttribute("h") == "Dinosaur Egg" then
+            local eValue = tool:GetAttribute("e") or 1
+            tool.Name = "Dinosaur Egg x" .. tostring(eValue)
+        end
+    end
+    
+    for _, tool in pairs(player.Backpack:GetChildren()) do
+        checkTool(tool)
+    end
+    
+    if player.Character and player.Character:FindFirstChildOfClass("Tool") then
+        checkTool(player.Character:FindFirstChildOfClass("Tool"))
+    end
+end
+
+RunService.Heartbeat:Connect(realtimeCheck)
