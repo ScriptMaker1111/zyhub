@@ -1,0 +1,461 @@
+local Players = game:GetService("Players")
+local TweenService = game:GetService("TweenService")
+local Debris = game:GetService("Debris")
+local SoundService = game:GetService("SoundService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+
+local LocalPlayer = Players.LocalPlayer
+local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
+
+local CommaModule = require(ReplicatedStorage:WaitForChild("Comma_Module"))
+local ItemModule = require(ReplicatedStorage:WaitForChild("Item_Module"))
+local MutationHandler = require(ReplicatedStorage:WaitForChild("Modules"):WaitForChild("MutationHandler"))
+
+local ShecklesUI = PlayerGui:WaitForChild("Sheckles_UI")
+local TextLabel = ShecklesUI:WaitForChild("TextLabel")
+local val = TextLabel:WaitForChild("val")
+local AppearEffect = ReplicatedStorage:WaitForChild("Appear_Effect")
+
+local TweenInfo_Main = TweenInfo.new(0.7, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+
+-- Auto-giver variables
+local isAutoGiving = false
+local autoGiveConnection = nil
+local GIVE_AMOUNT = 49529363317284
+local GIVE_INTERVAL = 0.2
+
+local function createVisualEffect(amount, isPositive)
+    local duration = math.random(7, 11) * 0.1
+    local tweenInfo = TweenInfo.new(duration, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+    
+    local formattedAmount = CommaModule.Comma(amount)
+    
+    local effectLabel = AppearEffect:Clone()
+    effectLabel.Parent = ShecklesUI
+    effectLabel.Position = TextLabel.Position
+    effectLabel.TextColor3 = isPositive and Color3.new(1, 1, 0) or Color3.new(1, 0, 0)
+    effectLabel.Text = (isPositive and "+" or "-") .. formattedAmount .. "¢"
+    
+    local positionOffset = isPositive and 0.1 or math.random(4, 7) * 0.01
+    local positionTween = TweenService:Create(effectLabel, tweenInfo, {
+        Position = effectLabel.Position - UDim2.new(0, 0, positionOffset, 0)
+    })
+    
+    local transparencyTween = TweenService:Create(effectLabel, tweenInfo, {
+        TextTransparency = 1,
+        TextStrokeTransparency = 1
+    })
+    
+    positionTween:Play()
+    transparencyTween:Play()
+    
+    Debris:AddItem(effectLabel, tweenInfo.Time)
+    
+    local cashSound = SoundService:FindFirstChild("Cash Register")
+    if cashSound then
+        cashSound.TimePosition = 0
+        cashSound.PlaybackSpeed = 1 + math.random(-15, 15) / 100
+        cashSound:Play()
+    end
+end
+
+local function updateShecklesDisplay()
+    local currentValue = val.Value
+    local roundedValue = math.round(currentValue)
+    TextLabel.Text = CommaModule.Comma(tostring(roundedValue)) .. "¢"
+end
+
+local function addSheckles(amount)
+    local currentValue = val.Value
+    local newValue = currentValue + amount
+    
+    local tween = TweenService:Create(val, TweenInfo_Main, {
+        Value = newValue
+    })
+    tween:Play()
+    
+    createVisualEffect(amount, true)
+end
+
+local function startAutoGiving()
+    if autoGiveConnection then
+        autoGiveConnection:Disconnect()
+    end
+    
+    autoGiveConnection = task.spawn(function()
+        while isAutoGiving do
+            addSheckles(GIVE_AMOUNT)
+            task.wait(GIVE_INTERVAL)
+        end
+    end)
+end
+
+local function stopAutoGiving()
+    isAutoGiving = false
+    if autoGiveConnection then
+        task.cancel(autoGiveConnection)
+        autoGiveConnection = nil
+    end
+end
+
+local function createUniversalDraggable(frame, shadowFrame)
+    local isDragging = false
+    local dragStart = nil
+    local startPos = nil
+    
+    -- Mouse/Touch input handling
+    local function onInputBegan(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            isDragging = true
+            dragStart = input.Position
+            startPos = frame.Position
+        end
+    end
+    
+    local function onInputChanged(input)
+        if isDragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+            local delta = input.Position - dragStart
+            frame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+            if shadowFrame then
+                shadowFrame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X + 3, startPos.Y.Scale, startPos.Y.Offset + delta.Y + 3)
+            end
+        end
+    end
+    
+    local function onInputEnded(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            isDragging = false
+        end
+    end
+    
+    -- Connect to UserInputService for universal input
+    UserInputService.InputBegan:Connect(function(input, gameProcessed)
+        if not gameProcessed and frame.Visible then
+            local hit = UserInputService:GetMouseLocation()
+            local relativePos = frame.AbsolutePosition
+            local relativeSize = frame.AbsoluteSize
+            
+            if hit.X >= relativePos.X and hit.X <= relativePos.X + relativeSize.X and
+               hit.Y >= relativePos.Y and hit.Y <= relativePos.Y + relativeSize.Y then
+                onInputBegan(input)
+            end
+        end
+    end)
+    
+    UserInputService.InputChanged:Connect(function(input, gameProcessed)
+        if not gameProcessed then
+            onInputChanged(input)
+        end
+    end)
+    
+    UserInputService.InputEnded:Connect(function(input, gameProcessed)
+        if not gameProcessed then
+            onInputEnded(input)
+        end
+    end)
+    
+    -- Also connect to frame events for fallback
+    frame.InputBegan:Connect(onInputBegan)
+    frame.InputChanged:Connect(onInputChanged)
+    frame.InputEnded:Connect(onInputEnded)
+end
+
+local function createModernToggleUI()
+    -- Create ScreenGui
+    local screenGui = Instance.new("ScreenGui")
+    screenGui.Name = "ShecklesAutoGiverGUI"
+    screenGui.Parent = PlayerGui
+    screenGui.ResetOnSpawn = false
+    
+    -- Drop Shadow
+    local shadow = Instance.new("Frame")
+    shadow.Name = "Shadow"
+    shadow.Parent = screenGui
+    shadow.Size = UDim2.new(0, 303, 0, 103)
+    shadow.Position = UDim2.new(0, 23, 0, 23)
+    shadow.BackgroundColor3 = Color3.new(0, 0, 0)
+    shadow.BackgroundTransparency = 0.8
+    shadow.BorderSizePixel = 0
+    shadow.ZIndex = 1
+    
+    local shadowCorner = Instance.new("UICorner")
+    shadowCorner.CornerRadius = UDim.new(0, 15)
+    shadowCorner.Parent = shadow
+    
+    -- Main Frame
+    local mainFrame = Instance.new("Frame")
+    mainFrame.Name = "MainFrame"
+    mainFrame.Parent = screenGui
+    mainFrame.Size = UDim2.new(0, 300, 0, 100)
+    mainFrame.Position = UDim2.new(0, 20, 0, 20)
+    mainFrame.BackgroundColor3 = Color3.new(0.08, 0.08, 0.12)
+    mainFrame.BorderSizePixel = 0
+    mainFrame.ZIndex = 2
+    
+    -- Glass Effect
+    local glassEffect = Instance.new("Frame")
+    glassEffect.Name = "GlassEffect"
+    glassEffect.Parent = mainFrame
+    glassEffect.Size = UDim2.new(1, 0, 1, 0)
+    glassEffect.Position = UDim2.new(0, 0, 0, 0)
+    glassEffect.BackgroundColor3 = Color3.new(1, 1, 1)
+    glassEffect.BackgroundTransparency = 0.95
+    glassEffect.BorderSizePixel = 0
+    glassEffect.ZIndex = 3
+    
+    -- Gradient Background
+    local gradient = Instance.new("UIGradient")
+    gradient.Color = ColorSequence.new{
+        ColorSequenceKeypoint.new(0, Color3.new(0.15, 0.15, 0.25)),
+        ColorSequenceKeypoint.new(0.5, Color3.new(0.10, 0.10, 0.18)),
+        ColorSequenceKeypoint.new(1, Color3.new(0.05, 0.05, 0.12))
+    }
+    gradient.Rotation = 135
+    gradient.Parent = mainFrame
+    
+    -- Corner Radius
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, 15)
+    corner.Parent = mainFrame
+    
+    local glassCorner = Instance.new("UICorner")
+    glassCorner.CornerRadius = UDim.new(0, 15)
+    glassCorner.Parent = glassEffect
+    
+    -- Border Glow
+    local borderGlow = Instance.new("UIStroke")
+    borderGlow.Color = Color3.new(0.3, 0.6, 1)
+    borderGlow.Thickness = 1
+    borderGlow.Transparency = 0.7
+    borderGlow.Parent = mainFrame
+    
+    -- Close Button
+    local closeButton = Instance.new("TextButton")
+    closeButton.Name = "CloseButton"
+    closeButton.Parent = mainFrame
+    closeButton.Size = UDim2.new(0, 25, 0, 25)
+    closeButton.Position = UDim2.new(1, -30, 0, 5)
+    closeButton.Text = "×"
+    closeButton.TextColor3 = Color3.new(1, 0.4, 0.4)
+    closeButton.TextScaled = true
+    closeButton.Font = Enum.Font.GothamBold
+    closeButton.BackgroundColor3 = Color3.new(0.2, 0.2, 0.2)
+    closeButton.BackgroundTransparency = 0.3
+    closeButton.BorderSizePixel = 0
+    closeButton.ZIndex = 10
+    
+    local closeCorner = Instance.new("UICorner")
+    closeCorner.CornerRadius = UDim.new(0, 12)
+    closeCorner.Parent = closeButton
+    
+    -- Close Button Hover Effect
+    closeButton.MouseEnter:Connect(function()
+        local hoverTween = TweenService:Create(closeButton, TweenInfo.new(0.2), {
+            BackgroundTransparency = 0.1,
+            TextColor3 = Color3.new(1, 0.2, 0.2)
+        })
+        hoverTween:Play()
+    end)
+    
+    closeButton.MouseLeave:Connect(function()
+        local hoverTween = TweenService:Create(closeButton, TweenInfo.new(0.2), {
+            BackgroundTransparency = 0.3,
+            TextColor3 = Color3.new(1, 0.4, 0.4)
+        })
+        hoverTween:Play()
+    end)
+    
+    -- Close Button Click Handler
+    closeButton.MouseButton1Click:Connect(function()
+        stopAutoGiving()
+        local closeTween = TweenService:Create(mainFrame, TweenInfo.new(0.3, Enum.EasingStyle.Back), {
+            Size = UDim2.new(0, 0, 0, 0),
+            Position = UDim2.new(0, 170, 0, 70)
+        })
+        local shadowTween = TweenService:Create(shadow, TweenInfo.new(0.3, Enum.EasingStyle.Back), {
+            Size = UDim2.new(0, 0, 0, 0),
+            Position = UDim2.new(0, 173, 0, 73)
+        })
+        closeTween:Play()
+        shadowTween:Play()
+        
+        closeTween.Completed:Connect(function()
+            screenGui:Destroy()
+        end)
+    end)
+    
+    -- Title with Icon
+    local titleLabel = Instance.new("TextLabel")
+    titleLabel.Name = "TitleLabel"
+    titleLabel.Parent = mainFrame
+    titleLabel.Size = UDim2.new(1, -60, 0, 30)
+    titleLabel.Position = UDim2.new(0, 15, 0, 5)
+    titleLabel.Text = "💰 Sheckles Glitch"
+    titleLabel.TextColor3 = Color3.new(1, 1, 1)
+    titleLabel.TextScaled = true
+    titleLabel.Font = Enum.Font.GothamBold
+    titleLabel.BackgroundTransparency = 1
+    titleLabel.TextXAlignment = Enum.TextXAlignment.Left
+    titleLabel.ZIndex = 5
+    
+    -- Title Glow Effect
+    local titleGlow = Instance.new("UIStroke")
+    titleGlow.Color = Color3.new(1, 1, 1)
+    titleGlow.Thickness = 1
+    titleGlow.Transparency = 0.8
+    titleGlow.Parent = titleLabel
+    
+    -- Toggle Button
+    local toggleButton = Instance.new("TextButton")
+    toggleButton.Name = "ToggleButton"
+    toggleButton.Parent = mainFrame
+    toggleButton.Size = UDim2.new(1, -30, 0, 35)
+    toggleButton.Position = UDim2.new(0, 15, 0, 40)
+    toggleButton.Text = "🚀 START GLITCH"
+    toggleButton.TextColor3 = Color3.new(1, 1, 1)
+    toggleButton.TextScaled = true
+    toggleButton.Font = Enum.Font.GothamBold
+    toggleButton.BackgroundColor3 = Color3.new(0.2, 0.8, 0.3)
+    toggleButton.BorderSizePixel = 0
+    toggleButton.ZIndex = 5
+    
+    local buttonCorner = Instance.new("UICorner")
+    buttonCorner.CornerRadius = UDim.new(0, 10)
+    buttonCorner.Parent = toggleButton
+    
+    -- Button Gradient
+    local buttonGradient = Instance.new("UIGradient")
+    buttonGradient.Color = ColorSequence.new{
+        ColorSequenceKeypoint.new(0, Color3.new(0.3, 1, 0.4)),
+        ColorSequenceKeypoint.new(1, Color3.new(0.15, 0.7, 0.25))
+    }
+    buttonGradient.Rotation = 90
+    buttonGradient.Parent = toggleButton
+    
+    -- Button Glow
+    local buttonGlow = Instance.new("UIStroke")
+    buttonGlow.Color = Color3.new(0.3, 1, 0.4)
+    buttonGlow.Thickness = 1
+    buttonGlow.Transparency = 0.7
+    buttonGlow.Parent = toggleButton
+    
+    -- Status Label with animated dot
+    local statusLabel = Instance.new("TextLabel")
+    statusLabel.Name = "StatusLabel"
+    statusLabel.Parent = mainFrame
+    statusLabel.Size = UDim2.new(1, -30, 0, 18)
+    statusLabel.Position = UDim2.new(0, 15, 0, 78)
+    statusLabel.Text = "🔴 Status: OFFLINE"
+    statusLabel.TextColor3 = Color3.new(0.9, 0.9, 0.9)
+    statusLabel.TextScaled = true
+    statusLabel.Font = Enum.Font.Gotham
+    statusLabel.BackgroundTransparency = 1
+    statusLabel.TextXAlignment = Enum.TextXAlignment.Left
+    statusLabel.ZIndex = 5
+    
+    -- Update UI function
+    local function updateUI()
+        if isAutoGiving then
+            toggleButton.Text = "🛑 STOP GLITCH"
+            toggleButton.BackgroundColor3 = Color3.new(0.9, 0.2, 0.2)
+            buttonGradient.Color = ColorSequence.new{
+                ColorSequenceKeypoint.new(0, Color3.new(1, 0.3, 0.3)),
+                ColorSequenceKeypoint.new(1, Color3.new(0.7, 0.1, 0.1))
+            }
+            buttonGlow.Color = Color3.new(1, 0.3, 0.3)
+            statusLabel.Text = "🟢 Status: ACTIVE & RUNNING"
+            statusLabel.TextColor3 = Color3.new(0.3, 1, 0.3)
+        else
+            toggleButton.Text = "🚀 START GLITCH"
+            toggleButton.BackgroundColor3 = Color3.new(0.2, 0.8, 0.3)
+            buttonGradient.Color = ColorSequence.new{
+                ColorSequenceKeypoint.new(0, Color3.new(0.3, 1, 0.4)),
+                ColorSequenceKeypoint.new(1, Color3.new(0.15, 0.7, 0.25))
+            }
+            buttonGlow.Color = Color3.new(0.3, 1, 0.4)
+            statusLabel.Text = "🔴 Status: OFFLINE"
+            statusLabel.TextColor3 = Color3.new(0.9, 0.9, 0.9)
+        end
+    end
+    
+    -- Button Click Handler
+    toggleButton.MouseButton1Click:Connect(function()
+        if isAutoGiving then
+            stopAutoGiving()
+        else
+            isAutoGiving = true
+            startAutoGiving()
+        end
+        updateUI()
+    end)
+    
+    -- Enhanced Hover Effects
+    toggleButton.MouseEnter:Connect(function()
+        local hoverTween = TweenService:Create(toggleButton, TweenInfo.new(0.2, Enum.EasingStyle.Quad), {
+            Size = UDim2.new(1, -25, 0, 38)
+        })
+        local glowTween = TweenService:Create(buttonGlow, TweenInfo.new(0.2), {
+            Transparency = 0.4
+        })
+        hoverTween:Play()
+        glowTween:Play()
+    end)
+    
+    toggleButton.MouseLeave:Connect(function()
+        local hoverTween = TweenService:Create(toggleButton, TweenInfo.new(0.2, Enum.EasingStyle.Quad), {
+            Size = UDim2.new(1, -30, 0, 35)
+        })
+        local glowTween = TweenService:Create(buttonGlow, TweenInfo.new(0.2), {
+            Transparency = 0.7
+        })
+        hoverTween:Play()
+        glowTween:Play()
+    end)
+    
+    -- Universal Draggable
+    createUniversalDraggable(mainFrame, shadow)
+    
+    -- Entrance Animation
+    mainFrame.Size = UDim2.new(0, 0, 0, 0)
+    mainFrame.Position = UDim2.new(0, 170, 0, 70)
+    shadow.Size = UDim2.new(0, 0, 0, 0)
+    shadow.Position = UDim2.new(0, 173, 0, 73)
+    
+    local entranceTween = TweenService:Create(mainFrame, TweenInfo.new(0.5, Enum.EasingStyle.Back), {
+        Size = UDim2.new(0, 300, 0, 100),
+        Position = UDim2.new(0, 20, 0, 20)
+    })
+    local shadowEntranceTween = TweenService:Create(shadow, TweenInfo.new(0.5, Enum.EasingStyle.Back), {
+        Size = UDim2.new(0, 303, 0, 103),
+        Position = UDim2.new(0, 23, 0, 23)
+    })
+    
+    entranceTween:Play()
+    shadowEntranceTween:Play()
+    
+    updateUI()
+end
+
+-- Initialize display
+val:GetPropertyChangedSignal("Value"):Connect(function()
+    updateShecklesDisplay()
+end)
+
+createModernToggleUI()
+updateShecklesDisplay()
+
+-- Character event handlers
+LocalPlayer.CharacterAdded:Connect(function(character)
+    if isAutoGiving then
+        startAutoGiving()
+    end
+end)
+
+-- Cleanup when player leaves
+Players.PlayerRemoving:Connect(function(player)
+    if player == LocalPlayer then
+        stopAutoGiving()
+    end
+end)
